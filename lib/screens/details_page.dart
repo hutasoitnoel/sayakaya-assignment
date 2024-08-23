@@ -17,6 +17,18 @@ class DetailsPage extends StatefulWidget {
 }
 
 class _DetailsPageState extends State<DetailsPage> {
+  Future<List<String>> fetchPokemonName(List<String> evolutionIds) async {
+    List<String> evolutionNames = [];
+
+    for (String id in evolutionIds) {
+      Pokemon pokemon = await widget.pokemonServiceClient.fetchPokemonName(id);
+
+      evolutionNames.add(pokemon.name);
+    }
+
+    return evolutionNames;
+  }
+
   Widget buildInfoCard(String title, String content) {
     return Card(
       elevation: 2.0,
@@ -157,26 +169,39 @@ class _DetailsPageState extends State<DetailsPage> {
                   const SizedBox(height: 8),
 
                   // Row 6
-                  Row(
-                    children: [
-                      Expanded(
-                        child: buildInfoCard(
-                            'Evolutions',
-                            pokemon.evolutions != null &&
-                                    pokemon.evolutions!.isNotEmpty
-                                ? pokemon.evolutions!.join(', ')
-                                : 'No evolutions found'),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: buildInfoCard(
-                          'Evolution requirements',
-                          pokemon.evolutionRequirements != null
-                              ? '${pokemon.evolutionRequirements!['amount']} ${pokemon.evolutionRequirements!['name']}'
-                              : '-',
-                        ),
-                      ),
-                    ],
+                  FutureBuilder<List<String>>(
+                    future: fetchPokemonName(pokemon.evolutions ?? []),
+                    builder: (context, evolutionSnapshot) {
+                      if (evolutionSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (evolutionSnapshot.hasError) {
+                        return Center(
+                            child: Text('Error: ${evolutionSnapshot.error}'));
+                      }
+
+                      final evolutionNames = evolutionSnapshot.data ?? [];
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: buildInfoCard(
+                                'Evolutions',
+                                evolutionNames.isNotEmpty
+                                    ? evolutionNames.join(', ')
+                                    : 'No evolutions found'),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: buildInfoCard(
+                              'Evolution requirements',
+                              pokemon.evolutionRequirements != null
+                                  ? '${pokemon.evolutionRequirements!['amount']} ${pokemon.evolutionRequirements!['name']}'
+                                  : '-',
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
